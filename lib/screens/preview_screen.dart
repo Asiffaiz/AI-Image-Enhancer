@@ -7,6 +7,7 @@ import '../providers/credit_provider.dart';
 import '../services/ai_service.dart';
 import '../widgets/loading_overlay.dart';
 import '../widgets/upgrade_dialog.dart';
+import 'image_editor_screen.dart';
 import 'result_screen.dart';
 
 class PreviewScreen extends StatefulWidget {
@@ -21,11 +22,27 @@ class PreviewScreen extends StatefulWidget {
 class _PreviewScreenState extends State<PreviewScreen> {
   bool isProcessing = false;
   EnhancementType selectedType = EnhancementType.upscale;
+  late File currentImageFile;
+
+  @override
+  void initState() {
+    super.initState();
+    currentImageFile = widget.imageFile;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Preview Image')),
+      appBar: AppBar(
+        title: const Text('Preview Image'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: _openImageEditor,
+            tooltip: 'Edit Image',
+          ),
+        ],
+      ),
       body: LoadingOverlay(
         isLoading: isProcessing,
         message: 'Enhancing your image...',
@@ -38,7 +55,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.file(widget.imageFile, fit: BoxFit.contain),
+                    child: Image.file(currentImageFile, fit: BoxFit.contain),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -49,7 +66,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 const SizedBox(height: 16),
                 _buildEnhancementOptions(),
                 const SizedBox(height: 24),
-                _buildEnhanceButton(),
+                _buildActionButtons(),
               ],
             ),
           ),
@@ -132,23 +149,60 @@ class _PreviewScreenState extends State<PreviewScreen> {
     );
   }
 
-  Widget _buildEnhanceButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _processImage,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _openImageEditor,
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit Image', style: TextStyle(fontSize: 16)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey.shade200,
+              foregroundColor: Colors.black87,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
           ),
         ),
-        child: const Text(
-          'Enhance Image',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _processImage,
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text(
+              'Enhance',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
         ),
+      ],
+    );
+  }
+
+  Future<void> _openImageEditor() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => ImageEditorScreen(
+              imageFile: currentImageFile,
+              onImageEdited: (File editedFile) {
+                setState(() {
+                  currentImageFile = editedFile;
+                });
+              },
+            ),
       ),
     );
   }
@@ -173,7 +227,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       // Process image
       final aiService = AIService();
       final enhancedImageUrl = await aiService.enhanceImage(
-        widget.imageFile,
+        currentImageFile,
         selectedType,
       );
 
@@ -183,7 +237,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
           MaterialPageRoute(
             builder:
                 (context) => ResultScreen(
-                  originalImageFile: widget.imageFile,
+                  originalImageFile: currentImageFile,
                   enhancedImageUrl: enhancedImageUrl,
                 ),
           ),

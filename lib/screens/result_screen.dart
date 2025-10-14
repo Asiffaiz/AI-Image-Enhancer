@@ -10,6 +10,7 @@ import '../core/constants.dart';
 import '../core/utils/image_utils.dart';
 import '../widgets/loading_overlay.dart';
 import 'home_screen.dart';
+import 'image_editor_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final File originalImageFile;
@@ -31,6 +32,8 @@ class _ResultScreenState extends State<ResultScreen>
   bool isSaved = false;
   late TabController _tabController;
   String? localEnhancedImagePath;
+  File? editedOriginalFile;
+  File? editedEnhancedFile;
 
   @override
   void initState() {
@@ -104,7 +107,9 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   Future<void> _saveToGallery() async {
-    if (localEnhancedImagePath == null) {
+    final imageToSave = _getCurrentEnhancedImage();
+
+    if (imageToSave == null) {
       Fluttertoast.showToast(
         msg: 'Enhanced image not available yet',
         toastLength: Toast.LENGTH_SHORT,
@@ -118,7 +123,7 @@ class _ResultScreenState extends State<ResultScreen>
 
     try {
       final success = await GallerySaver.saveImage(
-        localEnhancedImagePath!,
+        imageToSave.path,
         albumName: AppConstants.galleryFolderName,
       );
 
@@ -150,6 +155,53 @@ class _ResultScreenState extends State<ResultScreen>
     }
   }
 
+  File? _getCurrentOriginalImage() {
+    return editedOriginalFile ?? widget.originalImageFile;
+  }
+
+  File? _getCurrentEnhancedImage() {
+    if (editedEnhancedFile != null) {
+      return editedEnhancedFile;
+    } else if (localEnhancedImagePath != null) {
+      return File(localEnhancedImagePath!);
+    }
+    return null;
+  }
+
+  Future<void> _editImage(bool isOriginal) async {
+    final imageToEdit =
+        isOriginal ? _getCurrentOriginalImage() : _getCurrentEnhancedImage();
+
+    if (imageToEdit == null) {
+      Fluttertoast.showToast(
+        msg: 'Image not available for editing yet',
+        toastLength: Toast.LENGTH_SHORT,
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => ImageEditorScreen(
+              imageFile: imageToEdit,
+              onImageEdited: (File editedFile) {
+                setState(() {
+                  if (isOriginal) {
+                    editedOriginalFile = editedFile;
+                  } else {
+                    editedEnhancedFile = editedFile;
+                    // Reset saved state since we have a new edited image
+                    isSaved = false;
+                  }
+                });
+              },
+            ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,39 +223,68 @@ class _ResultScreenState extends State<ResultScreen>
                   controller: _tabController,
                   children: [
                     // Before image
-                    Center(
-                      child: Image.file(
-                        widget.originalImageFile,
-                        fit: BoxFit.contain,
-                      ),
+                    Stack(
+                      children: [
+                        Center(
+                          child: Image.file(
+                            _getCurrentOriginalImage()!,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 16,
+                          right: 16,
+                          child: FloatingActionButton(
+                            mini: true,
+                            onPressed: () => _editImage(true),
+                            backgroundColor: Colors.white,
+                            child: const Icon(Icons.edit, color: Colors.blue),
+                          ),
+                        ),
+                      ],
                     ),
                     // After image
-                    Center(
-                      child:
-                          localEnhancedImagePath != null
-                              ? Image.file(
-                                File(localEnhancedImagePath!),
-                                fit: BoxFit.contain,
-                              )
-                              : CachedNetworkImage(
-                                imageUrl: widget.enhancedImageUrl,
-                                fit: BoxFit.contain,
-                                placeholder:
-                                    (context, url) => const Center(
-                                      child: SpinKitPulse(
-                                        color: Colors.blue,
-                                        size: 50,
-                                      ),
-                                    ),
-                                errorWidget:
-                                    (context, url, error) => const Center(
-                                      child: Icon(
-                                        Icons.error,
-                                        color: Colors.red,
-                                        size: 50,
-                                      ),
-                                    ),
-                              ),
+                    Stack(
+                      children: [
+                        Center(
+                          child:
+                              _getCurrentEnhancedImage() != null
+                                  ? Image.file(
+                                    _getCurrentEnhancedImage()!,
+                                    fit: BoxFit.contain,
+                                  )
+                                  : CachedNetworkImage(
+                                    imageUrl: widget.enhancedImageUrl,
+                                    fit: BoxFit.contain,
+                                    placeholder:
+                                        (context, url) => const Center(
+                                          child: SpinKitPulse(
+                                            color: Colors.blue,
+                                            size: 50,
+                                          ),
+                                        ),
+                                    errorWidget:
+                                        (context, url, error) => const Center(
+                                          child: Icon(
+                                            Icons.error,
+                                            color: Colors.red,
+                                            size: 50,
+                                          ),
+                                        ),
+                                  ),
+                        ),
+                        if (_getCurrentEnhancedImage() != null)
+                          Positioned(
+                            bottom: 16,
+                            right: 16,
+                            child: FloatingActionButton(
+                              mini: true,
+                              onPressed: () => _editImage(false),
+                              backgroundColor: Colors.white,
+                              child: const Icon(Icons.edit, color: Colors.blue),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
