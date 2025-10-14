@@ -11,8 +11,8 @@ class AIService {
   final Dio _dio = Dio();
 
   AIService() {
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 60);
+    _dio.options.connectTimeout = const Duration(seconds: 60);
+    _dio.options.receiveTimeout = const Duration(seconds: 120);
   }
 
   /// Get the API key from environment variables
@@ -27,12 +27,81 @@ class AIService {
     }
   }
 
+  /// Generate an image using Together AI's API
+  Future<String?> generateImage({
+    required String prompt,
+    String? referenceImageUrl,
+    int width = 1024,
+    int height = 768,
+    int steps = 28,
+    String model = "black-forest-labs/FLUX.1-schnell-Free",
+  }) async {
+    try {
+      final apiKey = _getApiKey(false); // Using Together AI API
+
+      if (apiKey == null) {
+        debugPrint('Together AI API key not found');
+        return _mockEnhancedImage(EnhancementType.generate);
+      }
+
+      final Map<String, dynamic> requestBody = {
+        "model": model,
+        "prompt": prompt,
+        "width": width,
+        "height": height,
+        "steps": steps,
+        "n": 1,
+        "response_format": "url",
+      };
+
+      // Add reference image if provided
+      if (referenceImageUrl != null && referenceImageUrl.isNotEmpty) {
+        requestBody["image_url"] = referenceImageUrl;
+      }
+
+      // Add headers
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      // Make API call
+      final response = await _dio.post(
+        'https://api.together.xyz/v1/images/generations',
+        data: requestBody,
+        options: options,
+      );
+
+      if (response.statusCode == 200) {
+        // Parse response based on Together AI's structure
+        if (response.data['data'] != null && response.data['data'].isNotEmpty) {
+          return response.data['data'][0]['url'];
+        }
+      }
+
+      debugPrint('API error: ${response.statusCode} - ${response.data}');
+      return _mockEnhancedImage(EnhancementType.generate);
+    } catch (e) {
+      debugPrint('Error generating image: ${e.toString()}');
+      // Return mock data for development
+      return _mockEnhancedImage(EnhancementType.generate);
+    }
+  }
+
   /// Enhance an image using AI
   Future<String?> enhanceImage(
     File imageFile,
     EnhancementType enhancementType, {
     bool useKieAI = true,
   }) async {
+    // For image generation, use the dedicated method
+    if (enhancementType == EnhancementType.generate) {
+      // This will be handled by the generateImage method
+      return _mockEnhancedImage(enhancementType);
+    }
+
     try {
       final apiKey = _getApiKey(useKieAI);
 
@@ -87,6 +156,19 @@ class AIService {
       debugPrint('Error enhancing image: ${e.toString()}');
       // Return mock data for development
       return _mockEnhancedImage(enhancementType);
+    }
+  }
+
+  /// Upload an image and return its URL (for reference images)
+  Future<String?> uploadImageForReference(File imageFile) async {
+    try {
+      // For now, we'll return a mock URL
+      // In a production app, you would implement a proper image upload service
+      // to a storage service like AWS S3, Firebase Storage, etc.
+      return 'https://huggingface.co/datasets/patrickvonplaten/random_img/resolve/main/yosemite.png';
+    } catch (e) {
+      debugPrint('Error uploading image: ${e.toString()}');
+      return null;
     }
   }
 

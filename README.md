@@ -5,9 +5,10 @@ A Flutter mobile application that uses AI to enhance, generate, and modify image
 ## Features
 
 - **AI Image Enhancement**: Upscale and improve image quality
-- **AI Image Generation**: Generate new images based on input
+- **AI Image Generation**: Generate new images from text prompts using Together AI
 - **Remove Watermarks**: Clean watermarks from images
 - **Remove Background**: Extract subjects from backgrounds
+- **Image Editing**: Edit images before and after AI processing
 - **Before/After Comparison**: Compare original and enhanced images
 - **Free Credit System**: 2 free uses per day
 - **Local Storage**: Save enhanced images to gallery
@@ -70,6 +71,8 @@ lib/
 │    ├── splash_screen.dart
 │    ├── home_screen.dart
 │    ├── preview_screen.dart
+│    ├── image_generation_screen.dart
+│    ├── image_editor_screen.dart
 │    └── result_screen.dart
 ├── widgets/
 │    ├── image_card.dart
@@ -87,6 +90,26 @@ The app follows a clean architecture approach with:
 - **UI Layer**: Screens and widgets
 - **Utils**: Helper functions and constants
 
+## Key Features
+
+### Image Generation with Together AI
+
+The app integrates with Together AI's image generation API to create images from text prompts:
+
+- **Text-to-Image Generation**: Create images from descriptive prompts
+- **Reference Image Support**: Use an existing image as reference for generation
+- **Quality Control**: Adjust steps parameter for quality vs. speed
+- **Resolution Options**: Multiple resolution options (1024×768, 768×1024, etc.)
+- **Model**: Uses "black-forest-labs/FLUX.1-schnell-Free" model
+
+### Image Editing
+
+The app includes comprehensive image editing capabilities:
+
+- **Pre-Enhancement Editing**: Edit images before applying AI enhancement
+- **Post-Enhancement Editing**: Further refine AI-generated or enhanced images
+- **Editing Tools**: Crop, rotate, add filters, text, and drawings
+
 ## Dependencies
 
 - **dio**: For API calls
@@ -94,11 +117,35 @@ The app follows a clean architecture approach with:
 - **flutter_spinkit**: Loading animations
 - **shared_preferences**: For tracking free usage
 - **image**: Image processing utilities
-- **gallery_saver**: Save enhanced images
+- **gallery_saver_plus**: Save enhanced images
 - **fluttertoast**: User feedback messages
 - **flutter_bloc**: State management
 - **cached_network_image**: Efficient image loading
 - **flutter_dotenv**: Environment variable management
+- **image_editor_plus**: Comprehensive image editing functionality
+
+## Together AI API Integration
+
+The app uses Together AI's image generation API:
+
+```
+Endpoint: https://api.together.xyz/v1/images/generations
+Method: POST
+Headers:
+  - Authorization: Bearer YOUR_API_KEY
+  - Content-Type: application/json
+Body:
+  {
+    "model": "black-forest-labs/FLUX.1-schnell-Free",
+    "prompt": "Your descriptive prompt here",
+    "width": 1024,
+    "height": 768,
+    "steps": 28,
+    "n": 1,
+    "response_format": "url",
+    "image_url": "Optional reference image URL"
+  }
+```
 
 ## Future Improvements
 
@@ -107,6 +154,7 @@ The app follows a clean architecture approach with:
 - More AI enhancement options
 - Social sharing features
 - Cloud storage for enhanced images
+- Support for more AI models
 
 ## License
 

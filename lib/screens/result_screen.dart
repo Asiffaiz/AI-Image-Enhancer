@@ -11,15 +11,20 @@ import '../core/utils/image_utils.dart';
 import '../widgets/loading_overlay.dart';
 import 'home_screen.dart';
 import 'image_editor_screen.dart';
+import 'image_generation_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final File originalImageFile;
   final String enhancedImageUrl;
+  final bool isGeneratedImage;
+  final String? generationPrompt;
 
   const ResultScreen({
     Key? key,
     required this.originalImageFile,
     required this.enhancedImageUrl,
+    this.isGeneratedImage = false,
+    this.generationPrompt,
   }) : super(key: key);
 
   @override
@@ -38,9 +43,16 @@ class _ResultScreenState extends State<ResultScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: widget.isGeneratedImage ? 1 : 2,
+      vsync: this,
+    );
     _downloadEnhancedImage();
-    _saveToRecentImages();
+
+    // Only save to recent images if it's not a generated image
+    if (!widget.isGeneratedImage) {
+      _saveToRecentImages();
+    }
   }
 
   @override
@@ -202,15 +214,28 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
+  void _generateNewImage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const ImageGenerationScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Result'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [Tab(text: 'Before'), Tab(text: 'After')],
-        ),
+        title:
+            widget.isGeneratedImage
+                ? const Text('Generated Image')
+                : const Text('Result'),
+        bottom:
+            widget.isGeneratedImage
+                ? null
+                : TabBar(
+                  controller: _tabController,
+                  tabs: const [Tab(text: 'Before'), Tab(text: 'After')],
+                ),
       ),
       body: LoadingOverlay(
         isLoading: isLoading,
@@ -218,76 +243,115 @@ class _ResultScreenState extends State<ResultScreen>
         child: SafeArea(
           child: Column(
             children: [
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Before image
-                    Stack(
+              if (widget.isGeneratedImage && widget.generationPrompt != null)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Center(
-                          child: Image.file(
-                            _getCurrentOriginalImage()!,
-                            fit: BoxFit.contain,
+                        const Text(
+                          'Prompt:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                        Positioned(
-                          bottom: 16,
-                          right: 16,
-                          child: FloatingActionButton(
-                            mini: true,
-                            onPressed: () => _editImage(true),
-                            backgroundColor: Colors.white,
-                            child: const Icon(Icons.edit, color: Colors.blue),
-                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.generationPrompt!,
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ],
                     ),
-                    // After image
-                    Stack(
-                      children: [
-                        Center(
-                          child:
-                              _getCurrentEnhancedImage() != null
-                                  ? Image.file(
-                                    _getCurrentEnhancedImage()!,
-                                    fit: BoxFit.contain,
-                                  )
-                                  : CachedNetworkImage(
-                                    imageUrl: widget.enhancedImageUrl,
-                                    fit: BoxFit.contain,
-                                    placeholder:
-                                        (context, url) => const Center(
-                                          child: SpinKitPulse(
-                                            color: Colors.blue,
-                                            size: 50,
-                                          ),
-                                        ),
-                                    errorWidget:
-                                        (context, url, error) => const Center(
-                                          child: Icon(
-                                            Icons.error,
-                                            color: Colors.red,
-                                            size: 50,
-                                          ),
-                                        ),
-                                  ),
-                        ),
-                        if (_getCurrentEnhancedImage() != null)
-                          Positioned(
-                            bottom: 16,
-                            right: 16,
-                            child: FloatingActionButton(
-                              mini: true,
-                              onPressed: () => _editImage(false),
-                              backgroundColor: Colors.white,
-                              child: const Icon(Icons.edit, color: Colors.blue),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
+              Expanded(
+                child:
+                    widget.isGeneratedImage
+                        ? _buildGeneratedImageView()
+                        : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            // Before image
+                            Stack(
+                              children: [
+                                Center(
+                                  child: Image.file(
+                                    _getCurrentOriginalImage()!,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 16,
+                                  right: 16,
+                                  child: FloatingActionButton(
+                                    mini: true,
+                                    onPressed: () => _editImage(true),
+                                    backgroundColor: Colors.white,
+                                    child: const Icon(
+                                      Icons.edit,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // After image
+                            Stack(
+                              children: [
+                                Center(
+                                  child:
+                                      _getCurrentEnhancedImage() != null
+                                          ? Image.file(
+                                            _getCurrentEnhancedImage()!,
+                                            fit: BoxFit.contain,
+                                          )
+                                          : CachedNetworkImage(
+                                            imageUrl: widget.enhancedImageUrl,
+                                            fit: BoxFit.contain,
+                                            placeholder:
+                                                (context, url) => const Center(
+                                                  child: SpinKitPulse(
+                                                    color: Colors.blue,
+                                                    size: 50,
+                                                  ),
+                                                ),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    const Center(
+                                                      child: Icon(
+                                                        Icons.error,
+                                                        color: Colors.red,
+                                                        size: 50,
+                                                      ),
+                                                    ),
+                                          ),
+                                ),
+                                if (_getCurrentEnhancedImage() != null)
+                                  Positioned(
+                                    bottom: 16,
+                                    right: 16,
+                                    child: FloatingActionButton(
+                                      mini: true,
+                                      onPressed: () => _editImage(false),
+                                      backgroundColor: Colors.white,
+                                      child: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -317,19 +381,29 @@ class _ResultScreenState extends State<ResultScreen>
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HomeScreen(),
-                            ),
-                            (route) => false,
-                          );
-                        },
-                        icon: const Icon(Icons.refresh, color: Colors.white),
-                        label: const Text(
-                          'New Image',
-                          style: TextStyle(
+                        onPressed:
+                            widget.isGeneratedImage
+                                ? _generateNewImage
+                                : () {
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const HomeScreen(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                        icon: Icon(
+                          widget.isGeneratedImage
+                              ? Icons.auto_awesome
+                              : Icons.refresh,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          widget.isGeneratedImage
+                              ? 'New Generation'
+                              : 'New Image',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
@@ -347,6 +421,41 @@ class _ResultScreenState extends State<ResultScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGeneratedImageView() {
+    return Stack(
+      children: [
+        Center(
+          child:
+              _getCurrentEnhancedImage() != null
+                  ? Image.file(_getCurrentEnhancedImage()!, fit: BoxFit.contain)
+                  : CachedNetworkImage(
+                    imageUrl: widget.enhancedImageUrl,
+                    fit: BoxFit.contain,
+                    placeholder:
+                        (context, url) => const Center(
+                          child: SpinKitPulse(color: Colors.blue, size: 50),
+                        ),
+                    errorWidget:
+                        (context, url, error) => const Center(
+                          child: Icon(Icons.error, color: Colors.red, size: 50),
+                        ),
+                  ),
+        ),
+        if (_getCurrentEnhancedImage() != null)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              mini: true,
+              onPressed: () => _editImage(false),
+              backgroundColor: Colors.white,
+              child: const Icon(Icons.edit, color: Colors.blue),
+            ),
+          ),
+      ],
     );
   }
 }

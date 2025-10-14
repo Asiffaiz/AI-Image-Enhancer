@@ -10,6 +10,7 @@ import '../core/utils/image_utils.dart';
 import '../providers/credit_provider.dart';
 import '../widgets/upgrade_dialog.dart';
 import 'preview_screen.dart';
+import 'image_generation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -61,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _handleFeatureSelection(String feature, int index) async {
     final creditState = context.read<CreditBloc>().state;
 
     // Check if user has available credits
@@ -70,6 +71,20 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    // Handle AI Image Generation separately
+    if (feature == 'AI Image Generation') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ImageGenerationScreen()),
+      );
+      return;
+    }
+
+    // For other features, pick an image
+    await _pickImage();
+  }
+
+  Future<void> _pickImage() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
@@ -235,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: _pickImage,
+        onTap: () => _handleFeatureSelection(feature, index),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
